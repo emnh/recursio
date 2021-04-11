@@ -30,3 +30,4 @@ A recursive sandbox factory simulation game:
    - targety
    - rotationx. what about integer ticks?
    - rotationy
+ - Can we represent all or most properties visually? Such as two animation states which are interpolated between?
