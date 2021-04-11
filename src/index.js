@@ -6,6 +6,26 @@ function isFunction(functionToCheck) {
    return functionToCheck && {}.toString.call(functionToCheck) === '[object Function]';
 }
 
+var decodeEntities = (function() {
+  // this prevents any overhead from creating the object each time
+  var element = document.createElement('div');
+
+  function decodeHTMLEntities (str) {
+    if(str && typeof str === 'string') {
+      // strip script/html tags
+      str = str.replace(/<script[^>]*>([\S\s]*?)<\/script>/gmi, '');
+      str = str.replace(/<\/?\w(?:[^"'>]|"[^"]*"|'[^']*')*>/gmi, '');
+      element.innerHTML = str;
+      str = element.textContent;
+      element.textContent = '';
+    }
+
+    return str;
+  }
+
+  return decodeHTMLEntities;
+})();
+
 const main = function() {
 
   const grid = {};
@@ -177,14 +197,18 @@ const main = function() {
   menuObjects.push({
     name: 'Factory',
     symbol: '&#127981;',
+    typeSymbol: '&#127815;',
     output: { x: 0, y: -1},
-    ticker: (output, pixi, x, y) => {
+    ticker: (output, pixi, x, y, options) => {
+			/*
       const graphics = new PIXI.Graphics();
       graphics.lineStyle(1, 0xFF0000, 1);
       graphics.beginFill(0xFF0000);
       graphics.drawCircle(0, 0, scale * 0.25);
       graphics.pivot.set(-0.5 * scale);
       graphics.endFill();
+			*/
+			const graphics = new PIXI.Text(decodeEntities(options.typeSymbol));
       pixi.addChild(graphics);
       const sx = pixi.x;
       const sy = pixi.y;
@@ -197,7 +221,11 @@ const main = function() {
   });
   for (let i = 0; i < menuObjects.length; i++) {
     const mo = menuObjects[i];
-    const li = $('<li><div class="menuobj">' + mo.symbol + '</div></li>');
+    const typeSymbol = mo.typeSymbol || '';
+    const li =
+      $('<li style="position: relative;">' +
+        '<div style="position: absolute; left: 0px; top: 0px;" class="menuobj">' + mo.symbol + 
+        '</div><div style="position: absolute; left: 0px; top: 0px; transform: scale(0.5);">' + typeSymbol + '</div></li>');
     mo.parentMenu.append(li);
     li.data('index', i);
   }
@@ -323,32 +351,42 @@ const main = function() {
     processKey(KeyEvent.DOM_VK_SPACE, delay, () => {
       const selection = getSelected();
       if (selection !== undefined) {
-        const s = selection.text().trim();
-        const flipContainer = new PIXI.Container();
-        const text = new PIXI.Text(s, textStyle);
-        text.x = 0.5 * text.width + 0.5 * (scale - text.width);
-        text.y = 0.5 * text.height;
-        text.anchor.x = 0.5;
-        text.anchor.y = 0.5;
-        flipContainer.scale.x = state.flip === 1 ? -1 : 1;
-        flipContainer.x = state.flip === 1 ? scale : 0.0;
-        text.rotation = getRotation();
         const val = get(cursor.x, cursor.y);
         if (val !== undefined) {
-					for (let i = val.pixi.children.length - 1; i >= 0; i--) {
-            val.pixi.removeChild(val.pixi.children[i]);
-          }
-          val.pixi.addChild(flipContainer);
-          flipContainer.addChild(text);
           const index = selection.data('index');
           //console.log("index", index);
           const props = menuObjects[index];
           console.log("props", props);
           const output = getRotated(props.output);
           const ticker = function() {
-            return props.ticker(output, val.pixi, val.x, val.y);
+            return props.ticker(output, val.pixi, val.x, val.y, { typeSymbol: props.typeSymbol });
           };
           val.tickers = [ticker];
+
+          const placeSymbol = (s, symscale) => {
+            const text = new PIXI.Text(decodeEntities(s), textStyle);
+            text.x = 0.5 * text.width + 0.5 * (scale - text.width);
+            text.y = 0.5 * text.height;
+            text.anchor.x = 0.5;
+            text.anchor.y = 0.5;
+            text.rotation = getRotation();
+            text.scale.x = symscale;
+            text.scale.y = symscale;
+            return text;
+          };
+					for (let i = val.pixi.children.length - 1; i >= 0; i--) {
+            val.pixi.removeChild(val.pixi.children[i]);
+          }
+          const flipContainer = new PIXI.Container();
+          const text1 = placeSymbol(props.symbol, 1);
+          flipContainer.addChild(text1);
+          if (props.typeSymbol) {
+            const text2 = placeSymbol(props.typeSymbol, 0.5);
+            flipContainer.addChild(text2);
+          }
+          flipContainer.scale.x = state.flip === 1 ? -1 : 1;
+          flipContainer.x = state.flip === 1 ? scale : 0.0;
+          val.pixi.addChild(flipContainer);
         }
         //set(cursor.x, cursor.y, newobj);
       }
