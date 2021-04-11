@@ -16,7 +16,7 @@ A recursive sandbox factory simulation game:
    - selfspeedy (-1, 0, 1)
    - underspeedx (-1, 0, 1) for inverse belts
    - underspeedy (-1, 0, 1)
- - Each cell can contain a stacked number of objects. Each stack level decreases the size of the object.
+ - Each cell can contain a stacked number of objects. Each stack level decreases the size of the object. Maximum stack level is 8.
  - Save state to local storage to begin with. Add load/save to file functionality.
  - Map cells can contain resources. We need a mine object to mine them and output in one of 4 directions.
  - Void cell to eliminate resources.
