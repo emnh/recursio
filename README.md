@@ -31,3 +31,5 @@ A recursive sandbox factory simulation game:
    - rotationx. what about integer ticks?
    - rotationy
  - Can we represent all or most properties visually? Such as two animation states which are interpolated between?
+ - All offsets can be represented by an offset shape (up arrowfor overspeed) (circle for selfspeed) (down arrow for underspeed).
+ - Allow binary operators? As a factory that takes two belts as input and one output perhaps.
