@@ -35,12 +35,35 @@ const main = function() {
     flip: 0
   };
 
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  const px = window.devicePixelRatio;
+  const ipx = 1.0 / px;
+  const minwh = Math.min(window.innerWidth, window.innerHeight) * 0.8 * ipx;
+
+  const app = new PIXI.Application({
+    width: minwh, height: minwh, backgroundColor: 0, transparent: true, resolution: px || 1,
+      //width: minwh, height: minwh, backgroundColor: 0x1099bb, resolution: 1
+  });
+  document.body.appendChild(app.view);
+  const rootContainer = new PIXI.Container();
+  app.stage.addChild(rootContainer);
+
   const get = (x, y) => {
     key = x + ',' + y;
     if (key in grid) {
       return grid[key];
     } else {
-      return null;
+      grid[key] = {
+        pixi: new PIXI.Container(),
+        tickers: []
+      };
+      grid[key].pixi.x = x;
+      grid[key].pixi.y = y;
+      rootContainer.addChild[grid[key].pixi];
+      console.log("New grid key: ", key);
+      return grid[key];
+      //return null;
     }
   };
 
@@ -61,17 +84,6 @@ const main = function() {
     grid[x + ',' + y] = v;
   };
 
-  const width = window.innerWidth;
-  const height = window.innerHeight;
-  const px = window.devicePixelRatio;
-  const ipx = 1.0 / px;
-  const minwh = Math.min(window.innerWidth, window.innerHeight) * 0.8 * ipx;
-
-  const app = new PIXI.Application({
-    width: minwh, height: minwh, backgroundColor: 0, transparent: true, resolution: px || 1,
-      //width: minwh, height: minwh, backgroundColor: 0x1099bb, resolution: 1
-  });
-  document.body.appendChild(app.view);
   $("body").css("margin", 0);
   $("body").css("padding", 0);
   //$("body").css("background", "radial-gradient(#c0c0c0, #ffffff)");
@@ -97,6 +109,7 @@ const main = function() {
   h('f: Flip');
   h('0-9: Select menu item');
   h('Space: Place selected item');
+  h('Del/X: Delete selected cell');
 
   leftpanel.append("<ol id='ui'></ol>");
   const ui = $("#ui");
@@ -127,15 +140,15 @@ const main = function() {
       get(x, y).pixi.addChild(graphics);
       graphics.x = 0.0;
       graphics.y = 0.0;
-      console.log("reparent", x, y);
+      //console.log("reparent", x, y);
     };
   };
   const getRotation = () => state.rotation * Math.PI * 0.5;
-  const getRotated = function(output) {
-    const theta = getRotation();
+  const getRotated = function(theta, output, doRound = true) {
     const flipped = (x) => state.flip === 1 ? -x : x;
-    const x = flipped(Math.round(output.x * Math.cos(theta) - output.y * Math.sin(theta)));
-    const y = Math.round(output.x * Math.sin(theta) + output.y * Math.cos(theta));
+    const mround = doRound ? Math.round : (x) => x;
+    const x = flipped(mround(output.x * Math.cos(theta) - output.y * Math.sin(theta)));
+    const y = mround(output.x * Math.sin(theta) + output.y * Math.cos(theta));
     return { x, y };
   };
 
@@ -180,15 +193,57 @@ const main = function() {
     name: 'Robot Arm',
     symbol: '&#129470;',
     output: { x: 0, y: -1},
+		scale: { x: 2, y: 2 },
     ticker: (output, pixi, x, y) => {
-      if (pixi.children.length > 1) {
-        const graphics = pixi.children[1];
-        const sx = pixi.x;
-        const sy = pixi.y;
-        const ex = pixi.x + output.x * scale;
-        const ey = pixi.y + output.y * scale;
-        const reparent = getReparent(pixi, graphics, x + output.x, y + output.y);
-        return getUpdater(graphics, sx, sy, ex, ey, reparent);
+      if (pixi.children.length > 0) {
+        const arm = pixi.children[0].children[0];
+        const startRotation = arm.rotation;
+        const endRotation = startRotation + Math.PI * 0.5;
+        const rotateArm = (elapsed) => {
+          arm.rotation = startRotation + elapsed * (endRotation - startRotation);
+        };
+        const target = getRotated(startRotation, { x: -1, y: -1 });
+        const target2 = getRotated(endRotation, { x: -1, y: -1 });
+
+        const nx = x + target.x;
+        const ny = y + target.y;
+        const val = get(nx, ny);
+        const pixi2 = val !== null ? val.pixi : null;
+
+        const nx2 = x + target2.x;
+        const ny2 = y + target2.y;
+        //const output2 = { x: nx2, y: ny2 };
+
+        console.log(nx, ny, nx2, ny2);
+        if (pixi2 !== null && pixi2.children.length > 1) {
+          const graphics = pixi2.children[1];
+          const sx = pixi2.x;
+          const sy = pixi2.y;
+          const ex = pixi2.x + target2.x * scale;
+          const ey = pixi2.y + target2.y * scale;
+          if (arm.head === undefined) {
+            arm.head = new PIXI.Container();
+            arm.head.x = -0.75 * scale;
+            arm.head.y = -0.75 * scale;
+            arm.head.scale.x = 1.0 / arm.scale.x;
+            arm.head.scale.y = 1.0 / arm.scale.y;
+            arm.addChild(arm.head);
+          }
+          pixi2.removeChild(graphics);
+          arm.head.addChild(graphics);
+          const reparent = getReparent(arm, graphics, x + target2.x, y + target2.y);
+          //const updater = getUpdater(graphics, sx, sy, ex, ey, reparent);
+          return (elapsed) => {
+            //updater(elapsed);
+            rotateArm(elapsed);
+            if (elapsed >= 1.0) {
+              reparent();
+            }
+          };
+        }
+        return (elapsed) => {
+          rotateArm(elapsed);
+        };
       }
       return () => {};
     },
@@ -243,13 +298,9 @@ const main = function() {
     // paths[item] = s;
     item.data('path', s);
     selections[s] = item;
-    console.log(parentNode, item, item.index() + 1);
+    //console.log(parentNode, item, item.index() + 1);
   }
-  console.log(selections);
-
-  const rootContainer = new PIXI.Container();
-
-  app.stage.addChild(rootContainer);
+  //console.log(selections);
 
   const k = 10;
   const scale = Math.floor(minwh / (2 * k + 1));
@@ -348,6 +399,14 @@ const main = function() {
         $(".menuobj").addClass("flip");
       }
     });
+    const remove = () => {
+      const val = get(cursor.x, cursor.y);
+      for (let i = val.pixi.children.length - 1; i >= 0; i--) {
+        val.pixi.removeChild(val.pixi.children[i]);
+      }
+    };
+    processKey(KeyEvent.DOM_VK_DELETE, delay, remove);
+    processKey(KeyEvent.DOM_VK_X, delay, remove);
     processKey(KeyEvent.DOM_VK_SPACE, delay, () => {
       const selection = getSelected();
       if (selection !== undefined) {
@@ -356,8 +415,8 @@ const main = function() {
           const index = selection.data('index');
           //console.log("index", index);
           const props = menuObjects[index];
-          console.log("props", props);
-          const output = getRotated(props.output);
+          //console.log("props", props);
+          const output = getRotated(getRotation(), props.output);
           const ticker = function() {
             return props.ticker(output, val.pixi, val.x, val.y, { typeSymbol: props.typeSymbol });
           };
@@ -365,23 +424,36 @@ const main = function() {
 
           const placeSymbol = (s, symscale) => {
             const text = new PIXI.Text(decodeEntities(s), textStyle);
-            text.x = 0.5 * text.width + 0.5 * (scale - text.width);
-            text.y = 0.5 * text.height;
-            text.anchor.x = 0.5;
-            text.anchor.y = 0.5;
+            let ret = text;
+						if (symscale.x <= 1.0 && symscale.y <= 1.0) {
+              text.x = 0.5 * text.width + 0.5 * (scale - text.width);
+              text.y = 0.5 * text.height;
+              text.anchor.x = 0.5;
+              text.anchor.y = 0.5;
+            } else {
+              text.x = scale * 0.5;
+              text.y = scale * 0.5;
+              text.anchor.x = 0.75;
+              text.anchor.y = 0.75;
+              //const cont = new PIXI.Container();
+              //cont.x = scale * rot.x
+              //cont.y = scale * rot.y;
+              //cont.addChild(text);
+              //ret = cont;
+            }
             text.rotation = getRotation();
-            text.scale.x = symscale;
-            text.scale.y = symscale;
-            return text;
+            text.scale.x = symscale.x;
+            text.scale.y = symscale.y;
+            return ret;
           };
 					for (let i = val.pixi.children.length - 1; i >= 0; i--) {
             val.pixi.removeChild(val.pixi.children[i]);
           }
           const flipContainer = new PIXI.Container();
-          const text1 = placeSymbol(props.symbol, 1);
+          const text1 = placeSymbol(props.symbol, props.scale || { x: 1, y: 1});
           flipContainer.addChild(text1);
           if (props.typeSymbol) {
-            const text2 = placeSymbol(props.typeSymbol, 0.5);
+            const text2 = placeSymbol(props.typeSymbol, { x: 0.5, y: 0.5 });
             flipContainer.addChild(text2);
           }
           flipContainer.scale.x = state.flip === 1 ? -1 : 1;
@@ -406,7 +478,7 @@ const main = function() {
   document.addEventListener('keydown', keydown);
   document.addEventListener('keyup', keyup);
 
-  console.log(ui);
+  //console.log(ui);
   const showSelected = function() {
     $(".selected").removeClass("selected");
     const selection = getSelected();
