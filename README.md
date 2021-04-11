@@ -4,12 +4,18 @@ A recursive sandbox factory simulation game:
  - The player is a cursor in the grid, which can place objects.
  - We need a feature for recursion. Say a cell contains a + and it means it has a subgrid which you can enter, modify and leave.
  - Primary feature: Conveyor belts. 4 choices for input edge, 3 outputs for output edge.
- - Each object has a number of properties:
+ - Each object has a number of uniform properties:
    - x
    - y
    - width
    - height
    - enabled
+   - overspeedx (-1, 0, 1)
+   - overspeedy (-1, 0, 1)
+   - selfspeedx (-1, 0, 1)
+   - selfspeedy (-1, 0, 1)
+   - underspeedx (-1, 0, 1)
+   - underspeedy (-1, 0, 1)
  - Each cell can contain a stacked number of objects. Each stack level decreases the size of the object.
  - Save state to local storage to begin with. Add load/save to file functionality.
  - Map cells can contain resources. We need a mine object to mine them and output in one of 4 directions.
