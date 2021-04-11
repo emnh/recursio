@@ -12,6 +12,42 @@
   border: 1px solid red;
   color: red;
 }
+.flip {
+  display: inline-block;
+  transform: scaleX(-1);
+}
+.rotate1 {
+  display: inline-block;
+  transform: rotate(0deg);
+}
+.rotate2 {
+  display: inline-block;
+  transform: rotate(90deg);
+}
+.rotate3 {
+  display: inline-block;
+  transform: rotate(180deg);
+}
+.rotate4 {
+  display: inline-block;
+  transform: rotate(270deg);
+}
+.flip.rotate1 {
+  display: inline-block;
+  transform: scaleX(-1) rotate(0deg);
+}
+.flip.rotate2 {
+  display: inline-block;
+  transform: scaleX(-1) rotate(90deg);
+}
+.flip.rotate3 {
+  display: inline-block;
+  transform: scaleX(-1) rotate(180deg);
+}
+.flip.rotate4 {
+  display: inline-block;
+  transform: scaleX(-1) rotate(270deg);
+}
 </style>
   </head>
   <body>

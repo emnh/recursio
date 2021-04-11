@@ -57,13 +57,23 @@ const main = function() {
   const padtop =  ipx * 0.5 * (height - minwh);
   $("canvas").css("padding-top", padtop + "px");
 
-  $("body").append("<div id='leftpanel'>No mouse</div>");
+  $("body").append("<div id='leftpanel'></div>");
   const leftpanel = $("#leftpanel");
   leftpanel.css("position", "absolute");
   leftpanel.css("left", (0.5 * padleft) + "px");
   leftpanel.css("top", padtop + "px");
-  leftpanel.append("<ol id='ui'></ol>");
 
+  leftpanel.append("<ul id='help'></ul>");
+  const help = $("#help");
+  help.css("font-size", "24px");
+  const h = (x) => help.append('<li>' + x + '</li>');
+  h('No mouse');
+  h('h: Toggle help');
+  h('r: Rotate');
+  h('f: Flip');
+  h('0-9: Select menu item');
+
+  leftpanel.append("<ol id='ui'></ol>");
   const ui = $("#ui");
 
   ui.append('<li><ol id="ol1"></ol></li>');
@@ -76,23 +86,9 @@ const main = function() {
   const ol3 = $("#ol3");
   const ol4 = $("#ol4");
 
-  ol1.append('<li><div style="display: inline-block; transform: rotate(0deg);">&#8593;</span></li>');
-  ol1.append('<li><div style="display: inline-block; transform: rotate(90deg);">&#8593;</span></li>');
-  ol1.append('<li><div style="display: inline-block; transform: rotate(180deg);">&#8593;</span></li>');
-  ol1.append('<li><div style="display: inline-block; transform: rotate(270);">&#8593;</span></li>');
-
-  ol2.append('<li><div style="display: inline-block; transform: rotate(0deg);">&#10548;</span></li>');
-  ol2.append('<li><div style="display: inline-block; transform: rotate(90deg);">&#10548;</span></li>');
-  ol2.append('<li><div style="display: inline-block; transform: rotate(180deg);">&#10548;</span></li>');
-  ol2.append('<li><div style="display: inline-block; transform: rotate(270deg);">&#10548;</span></li>');
-
-  ol3.append('<li><div style="display: inline-block; transform: scaleX(-1) rotate(0deg);">&#10548;</span></li>');
-  ol3.append('<li><div style="display: inline-block; transform: scaleX(-1) rotate(90deg);">&#10548;</span></li>');
-  ol3.append('<li><div style="display: inline-block; transform: scaleX(-1) rotate(180deg);">&#10548;</span></li>');
-  ol3.append('<li><div style="display: inline-block; transform: scaleX(-1) rotate(270deg);">&#10548;</span></li>');
-    
-  ol4.append('<li><div style="display: inline-block; transform: scaleX(-1) rotate(270deg);">&#129470;</span></li>');
-  
+  ol1.append('<li><div class="menuobj">&#8593;</div></li>');
+  ol1.append('<li><div class="menuobj">&#10548;</div></li>');
+  ol1.append('<li><div class="menuobj">&#129470;</div></li>');
 
   //const paths = {};
   const selections = {};
@@ -180,12 +176,29 @@ const main = function() {
     }
   };
   const selected = [];
+  let rotation = 0;
+  let flip = 0;
   const processInput = function() {
     const delay = 0.1 * 1000;
     processKey(KeyEvent.DOM_VK_LEFT, delay, () => { return cursor.x--; });
     processKey(KeyEvent.DOM_VK_RIGHT, delay, () => { return cursor.x++; });
     processKey(KeyEvent.DOM_VK_UP, delay, () => { return cursor.y--; });
     processKey(KeyEvent.DOM_VK_DOWN, delay, () => { return cursor.y++; });
+    processKey(KeyEvent.DOM_VK_R, delay, () => {
+      rotation = (rotation + 1) % 4;
+      $(".menuobj").removeClass("rotate1");
+      $(".menuobj").removeClass("rotate2");
+      $(".menuobj").removeClass("rotate3");
+      $(".menuobj").removeClass("rotate4");
+      $(".menuobj").addClass("rotate" + (rotation + 1).toString());
+    });
+    processKey(KeyEvent.DOM_VK_F, delay, () => {
+      flip = (flip + 1) % 2;
+      $(".menuobj").removeClass("flip");
+      if (flip == 1) {
+        $(".menuobj").addClass("flip");
+      }
+    });
     for (let i = 0; i < 10; i++) {
       const s = i.toString();
       processKey(KeyEvent['DOM_VK_' + s], delay, () => {
