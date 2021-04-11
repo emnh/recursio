@@ -10,11 +10,11 @@ A recursive sandbox factory simulation game:
    - width
    - height
    - enabled
-   - overspeedx (-1, 0, 1)
+   - overspeedx (-1, 0, 1) for belts
    - overspeedy (-1, 0, 1)
-   - selfspeedx (-1, 0, 1)
+   - selfspeedx (-1, 0, 1) for cars
    - selfspeedy (-1, 0, 1)
-   - underspeedx (-1, 0, 1)
+   - underspeedx (-1, 0, 1) for inverse belts
    - underspeedy (-1, 0, 1)
  - Each cell can contain a stacked number of objects. Each stack level decreases the size of the object.
  - Save state to local storage to begin with. Add load/save to file functionality.
@@ -25,3 +25,8 @@ A recursive sandbox factory simulation game:
  - All items have integer positions in the grid at each time tick. All which happens in between is linear interpolation based on graphics frames.
  - Might it be possible to let recursion cells operate at another tick frequency, in order to finish subtasks which can be required at a quicker rate above?
  - Figure out how to represent characters and numbers.
+ - Robot arm is an essential device. It adds the following properties:
+   - targetx
+   - targety
+   - rotationx. what about integer ticks?
+   - rotationy
