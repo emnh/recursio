@@ -10,6 +10,10 @@ const main = function() {
 
   const grid = {};
   const containers = {};
+  const state = {
+    rotation: 0,
+    flip: 0
+  };
 
   const get = (x, y) => {
     key = x + ',' + y;
@@ -65,13 +69,14 @@ const main = function() {
 
   leftpanel.append("<ul id='help'></ul>");
   const help = $("#help");
-  help.css("font-size", "24px");
+  help.css("font-size", "12px");
   const h = (x) => help.append('<li>' + x + '</li>');
   h('No mouse');
   h('h: Toggle help');
   h('r: Rotate');
   h('f: Flip');
   h('0-9: Select menu item');
+  h('Space: Place selected item');
 
   leftpanel.append("<ol id='ui'></ol>");
   const ui = $("#ui");
@@ -86,9 +91,116 @@ const main = function() {
   const ol3 = $("#ol3");
   const ol4 = $("#ol4");
 
-  ol1.append('<li><div class="menuobj">&#8593;</div></li>');
-  ol1.append('<li><div class="menuobj">&#10548;</div></li>');
-  ol1.append('<li><div class="menuobj">&#129470;</div></li>');
+  const getUpdater = function(pixi, sx, sy, ex, ey, ondone) {
+    const updater = function(elapsed) {
+      pixi.x = sx + elapsed * (ex - sx);
+      pixi.y = sy + elapsed * (ey - sy);
+      if (elapsed >= 1.0 && ondone !== undefined) {
+        ondone();
+      }
+    };
+    return updater;
+  };
+  const getReparent = function(pixi, graphics, x, y) {
+    return () => {
+      pixi.removeChild(graphics);
+      get(x, y).pixi.addChild(graphics);
+      graphics.x = 0.0;
+      graphics.y = 0.0;
+      console.log("reparent", x, y);
+    };
+  };
+  const getRotation = () => state.rotation * Math.PI * 0.5;
+  const getRotated = function(output) {
+    const theta = getRotation();
+    const flipped = (x) => state.flip === 1 ? -x : x;
+    const x = flipped(Math.round(output.x * Math.cos(theta) - output.y * Math.sin(theta)));
+    const y = Math.round(output.x * Math.sin(theta) + output.y * Math.cos(theta));
+    return { x, y };
+  };
+
+  const menuObjects = [];
+  menuObjects.push({
+    name: 'Belt',
+    symbol: '&#8593;',
+    output: { x: 0, y: -1},
+    ticker: (output, pixi, x, y) => {
+      if (pixi.children.length > 1) {
+        const graphics = pixi.children[1];
+        const sx = pixi.x;
+        const sy = pixi.y;
+        const ex = pixi.x + output.x * scale;
+        const ey = pixi.y + output.y * scale;
+        const reparent = getReparent(pixi, graphics, x + output.x, y + output.y);
+        return getUpdater(graphics, sx, sy, ex, ey, reparent);
+      }
+      return () => {};
+    },
+    parentMenu: ol1
+  });
+  menuObjects.push({
+    name: 'Curved Belt',
+    symbol: '&#10548;',
+    output: { x: 0, y: -1},
+    ticker: (output, pixi, x, y) => {
+      if (pixi.children.length > 1) {
+        const graphics = pixi.children[1];
+        const sx = pixi.x;
+        const sy = pixi.y;
+        const ex = pixi.x + output.x * scale;
+        const ey = pixi.y + output.y * scale;
+        const reparent = getReparent(pixi, graphics, x + output.x, y + output.y);
+        return getUpdater(graphics, sx, sy, ex, ey, reparent);
+      }
+      return () => {};
+    },
+    parentMenu: ol1
+  });
+  menuObjects.push({
+    name: 'Robot Arm',
+    symbol: '&#129470;',
+    output: { x: 0, y: -1},
+    ticker: (output, pixi, x, y) => {
+      if (pixi.children.length > 1) {
+        const graphics = pixi.children[1];
+        const sx = pixi.x;
+        const sy = pixi.y;
+        const ex = pixi.x + output.x * scale;
+        const ey = pixi.y + output.y * scale;
+        const reparent = getReparent(pixi, graphics, x + output.x, y + output.y);
+        return getUpdater(graphics, sx, sy, ex, ey, reparent);
+      }
+      return () => {};
+    },
+    parentMenu: ol1
+  });
+  menuObjects.push({
+    name: 'Factory',
+    symbol: '&#127981;',
+    output: { x: 0, y: -1},
+    ticker: (output, pixi, x, y) => {
+      const graphics = new PIXI.Graphics();
+      graphics.lineStyle(1, 0xFF0000, 1);
+      graphics.beginFill(0xFF0000);
+      graphics.drawCircle(0, 0, scale * 0.25);
+      graphics.pivot.set(-0.5 * scale);
+      graphics.endFill();
+      pixi.addChild(graphics);
+      const sx = pixi.x;
+      const sy = pixi.y;
+      const ex = pixi.x + output.x * scale;
+      const ey = pixi.y + output.y * scale;
+      const reparent = getReparent(pixi, graphics, x + output.x, y + output.y);
+      return getUpdater(graphics, sx, sy, ex, ey, reparent);
+    },
+    parentMenu: ol1
+  });
+  for (let i = 0; i < menuObjects.length; i++) {
+    const mo = menuObjects[i];
+    const li = $('<li><div class="menuobj">' + mo.symbol + '</div></li>');
+    mo.parentMenu.append(li);
+    li.data('index', i);
+  }
 
   //const paths = {};
   const selections = {};
@@ -97,7 +209,7 @@ const main = function() {
     const item = $(listItems[li]);
     const parents = item.parents('li');
     const parentNode = $(parents[parents.length - 1]);
-    const s = 
+    const s =
       (parents.length > 0 ? parentNode.data('path') + '.' : '') +
         (item.index() + 1).toString();
     // paths[item] = s;
@@ -144,16 +256,23 @@ const main = function() {
           container.addChild(graphics);
           rootContainer.addChild(container);
           setG(containers, k + xd, k + yd, container);
+          const subcontainer = new PIXI.Container();
+          container.addChild(subcontainer);
+          set(k + xd, k + yd, {
+            x: k + xd,
+            y: k + yd,
+            pixi: subcontainer,
+            tickers: []
+          });
         }
         const container = getG(containers, k + xd, k + yd);
-        const content = get(nx, ny);
+        //const content = get(nx, ny);
         //const toPaint = content.stack[0];
       }
     }
   }
   repaint(k, k, true);
 
-  const pkeys = {};
   const last = {};
   const keydown = function(evt) {
     pkeys[evt.keyCode] = true;
@@ -175,9 +294,11 @@ const main = function() {
       }
     }
   };
+
   const selected = [];
-  let rotation = 0;
-  let flip = 0;
+  const pkeys = {};
+  const getSelected = () => selections[selected.join('.')];
+
   const processInput = function() {
     const delay = 0.1 * 1000;
     processKey(KeyEvent.DOM_VK_LEFT, delay, () => { return cursor.x--; });
@@ -185,31 +306,62 @@ const main = function() {
     processKey(KeyEvent.DOM_VK_UP, delay, () => { return cursor.y--; });
     processKey(KeyEvent.DOM_VK_DOWN, delay, () => { return cursor.y++; });
     processKey(KeyEvent.DOM_VK_R, delay, () => {
-      rotation = (rotation + 1) % 4;
+      state.rotation = (state.rotation + 1) % 4;
       $(".menuobj").removeClass("rotate1");
       $(".menuobj").removeClass("rotate2");
       $(".menuobj").removeClass("rotate3");
       $(".menuobj").removeClass("rotate4");
-      $(".menuobj").addClass("rotate" + (rotation + 1).toString());
+      $(".menuobj").addClass("rotate" + (state.rotation + 1).toString());
     });
     processKey(KeyEvent.DOM_VK_F, delay, () => {
-      flip = (flip + 1) % 2;
+      state.flip = (state.flip + 1) % 2;
       $(".menuobj").removeClass("flip");
-      if (flip == 1) {
+      if (state.flip === 1) {
         $(".menuobj").addClass("flip");
+      }
+    });
+    processKey(KeyEvent.DOM_VK_SPACE, delay, () => {
+      const selection = getSelected();
+      if (selection !== undefined) {
+        const s = selection.text().trim();
+        const flipContainer = new PIXI.Container();
+        const text = new PIXI.Text(s, textStyle);
+        text.x = 0.5 * text.width + 0.5 * (scale - text.width);
+        text.y = 0.5 * text.height;
+        text.anchor.x = 0.5;
+        text.anchor.y = 0.5;
+        flipContainer.scale.x = state.flip === 1 ? -1 : 1;
+        flipContainer.x = state.flip === 1 ? scale : 0.0;
+        text.rotation = getRotation();
+        const val = get(cursor.x, cursor.y);
+        if (val !== undefined) {
+					for (let i = val.pixi.children.length - 1; i >= 0; i--) {
+            val.pixi.removeChild(val.pixi.children[i]);
+          }
+          val.pixi.addChild(flipContainer);
+          flipContainer.addChild(text);
+          const index = selection.data('index');
+          //console.log("index", index);
+          const props = menuObjects[index];
+          console.log("props", props);
+          const output = getRotated(props.output);
+          const ticker = function() {
+            return props.ticker(output, val.pixi, val.x, val.y);
+          };
+          val.tickers = [ticker];
+        }
+        //set(cursor.x, cursor.y, newobj);
       }
     });
     for (let i = 0; i < 10; i++) {
       const s = i.toString();
       processKey(KeyEvent['DOM_VK_' + s], delay, () => {
-        selected.push(i); 
-        let ss = selected.join('.');
-        const selection = selections[ss];
+        selected.push(i);
+        const selection = getSelected();
         if (selection === undefined) {
           selected.length = 0;
-          selected.push(i); 
+          selected.push(i);
         }
-        console.log(selected.join('.'));
       });
     }
   }
@@ -219,8 +371,7 @@ const main = function() {
   console.log(ui);
   const showSelected = function() {
     $(".selected").removeClass("selected");
-    let ss = selected.join('.');
-    const selection = selections[ss];
+    const selection = getSelected();
     if (selection === undefined) {
       selected.length = 0;
     } else {
@@ -228,8 +379,30 @@ const main = function() {
     }
   };
 
+  const updaters = [];
+  let startTime = performance.now();
+  const tick = function() {
+    for (let i = 0; i < updaters.length; i++) {
+      updaters[i](1.0);
+    }
+    updaters.length = 0;
+    for (let key in grid) {
+      const tickers = grid[key].tickers;
+      for (let i = 0; i < tickers.length; i++) {
+        const updater = tickers[i]();
+        updaters.push(updater);
+      }
+    }
+    startTime = performance.now();
+  };
+  setInterval(tick, 1000);
+
   app.ticker.add((delta) => {
     processInput();
+    for (let i = 0; i < updaters.length; i++) {
+      const elapsed = (performance.now() - startTime) * 0.001;
+      updaters[i](elapsed);
+    }
     repaint(cursor.x, cursor.y, false);
     repositionAvatar();
     showSelected();
