@@ -140,6 +140,7 @@ const main = function() {
       get(x, y).pixi.addChild(graphics);
       graphics.x = 0.0;
       graphics.y = 0.0;
+      graphics.lastMoved = performance.now();
       //console.log("reparent", x, y);
     };
   };
@@ -164,6 +165,11 @@ const main = function() {
         const sy = pixi.y;
         const ex = pixi.x + output.x * scale;
         const ey = pixi.y + output.y * scale;
+        //if (graphics.lastMoved === undefined ||
+        //    performance.now() - graphics.lastMoved >= 250)
+        const me = pixi.children[0];
+        pixi.removeChild(graphics);
+        me.addChild(graphics);
         const reparent = getReparent(pixi, graphics, x + output.x, y + output.y);
         return getUpdater(graphics, sx, sy, ex, ey, reparent);
       }
@@ -182,8 +188,24 @@ const main = function() {
         const sy = pixi.y;
         const ex = pixi.x + output.x * scale;
         const ey = pixi.y + output.y * scale;
+        const me = pixi.children[0];
+        pixi.removeChild(graphics);
+        me.addChild(graphics);
         const reparent = getReparent(pixi, graphics, x + output.x, y + output.y);
         return getUpdater(graphics, sx, sy, ex, ey, reparent);
+      }
+      return () => {};
+    },
+    parentMenu: ol1
+  });
+  menuObjects.push({
+    name: 'Recycling',
+    symbol: '&#9850;',
+    output: { x: 0, y: 0},
+    ticker: (output, pixi, x, y) => {
+      while (pixi.children.length > 1) {
+        const graphics = pixi.children[1];
+        pixi.removeChild(graphics);
       }
       return () => {};
     },
@@ -214,8 +236,10 @@ const main = function() {
         const ny2 = y + target2.y;
         //const output2 = { x: nx2, y: ny2 };
 
-        console.log(nx, ny, nx2, ny2);
-        if (pixi2 !== null && pixi2.children.length > 1) {
+        //console.log(nx, ny, nx2, ny2);
+        if (pixi2 !== null && pixi2.children.length > 1 &&
+           (pixi2.children[1].lastMovedByArm === undefined ||
+            performance.now() - pixi2.children[1].lastMovedByArm >= 500)) {
           const graphics = pixi2.children[1];
           const sx = pixi2.x;
           const sy = pixi2.y;
@@ -236,6 +260,8 @@ const main = function() {
           return (elapsed) => {
             //updater(elapsed);
             rotateArm(elapsed);
+            graphics.lastMoved = performance.now();
+            graphics.lastMovedByArm = performance.now();
             if (elapsed >= 1.0) {
               reparent();
             }
@@ -404,6 +430,7 @@ const main = function() {
       for (let i = val.pixi.children.length - 1; i >= 0; i--) {
         val.pixi.removeChild(val.pixi.children[i]);
       }
+      val.tickers.length = 0;
     };
     processKey(KeyEvent.DOM_VK_DELETE, delay, remove);
     processKey(KeyEvent.DOM_VK_X, delay, remove);
@@ -413,52 +440,54 @@ const main = function() {
         const val = get(cursor.x, cursor.y);
         if (val !== undefined) {
           const index = selection.data('index');
-          //console.log("index", index);
-          const props = menuObjects[index];
-          //console.log("props", props);
-          const output = getRotated(getRotation(), props.output);
-          const ticker = function() {
-            return props.ticker(output, val.pixi, val.x, val.y, { typeSymbol: props.typeSymbol });
-          };
-          val.tickers = [ticker];
+          if (index !== undefined) {
+            //console.log("index", index);
+            const props = menuObjects[index];
+            //console.log("props", props);
+            const output = getRotated(getRotation(), props.output);
+            const ticker = function() {
+              return props.ticker(output, val.pixi, val.x, val.y, { typeSymbol: props.typeSymbol });
+            };
+            val.tickers = [ticker];
 
-          const placeSymbol = (s, symscale) => {
-            const text = new PIXI.Text(decodeEntities(s), textStyle);
-            let ret = text;
-						if (symscale.x <= 1.0 && symscale.y <= 1.0) {
-              text.x = 0.5 * text.width + 0.5 * (scale - text.width);
-              text.y = 0.5 * text.height;
-              text.anchor.x = 0.5;
-              text.anchor.y = 0.5;
-            } else {
-              text.x = scale * 0.5;
-              text.y = scale * 0.5;
-              text.anchor.x = 0.75;
-              text.anchor.y = 0.75;
-              //const cont = new PIXI.Container();
-              //cont.x = scale * rot.x
-              //cont.y = scale * rot.y;
-              //cont.addChild(text);
-              //ret = cont;
+            const placeSymbol = (s, symscale) => {
+              const text = new PIXI.Text(decodeEntities(s), textStyle);
+              let ret = text;
+              if (symscale.x <= 1.0 && symscale.y <= 1.0) {
+                text.x = 0.5 * text.width + 0.5 * (scale - text.width);
+                text.y = 0.5 * text.height;
+                text.anchor.x = 0.5;
+                text.anchor.y = 0.5;
+              } else {
+                text.x = scale * 0.5;
+                text.y = scale * 0.5;
+                text.anchor.x = 0.75;
+                text.anchor.y = 0.75;
+                //const cont = new PIXI.Container();
+                //cont.x = scale * rot.x
+                //cont.y = scale * rot.y;
+                //cont.addChild(text);
+                //ret = cont;
+              }
+              text.rotation = getRotation();
+              text.scale.x = symscale.x;
+              text.scale.y = symscale.y;
+              return ret;
+            };
+            for (let i = val.pixi.children.length - 1; i >= 0; i--) {
+              val.pixi.removeChild(val.pixi.children[i]);
             }
-            text.rotation = getRotation();
-            text.scale.x = symscale.x;
-            text.scale.y = symscale.y;
-            return ret;
-          };
-					for (let i = val.pixi.children.length - 1; i >= 0; i--) {
-            val.pixi.removeChild(val.pixi.children[i]);
+            const flipContainer = new PIXI.Container();
+            const text1 = placeSymbol(props.symbol, props.scale || { x: 1, y: 1});
+            flipContainer.addChild(text1);
+            if (props.typeSymbol) {
+              const text2 = placeSymbol(props.typeSymbol, { x: 0.5, y: 0.5 });
+              flipContainer.addChild(text2);
+            }
+            flipContainer.scale.x = state.flip === 1 ? -1 : 1;
+            flipContainer.x = state.flip === 1 ? scale : 0.0;
+            val.pixi.addChild(flipContainer);
           }
-          const flipContainer = new PIXI.Container();
-          const text1 = placeSymbol(props.symbol, props.scale || { x: 1, y: 1});
-          flipContainer.addChild(text1);
-          if (props.typeSymbol) {
-            const text2 = placeSymbol(props.typeSymbol, { x: 0.5, y: 0.5 });
-            flipContainer.addChild(text2);
-          }
-          flipContainer.scale.x = state.flip === 1 ? -1 : 1;
-          flipContainer.x = state.flip === 1 ? scale : 0.0;
-          val.pixi.addChild(flipContainer);
         }
         //set(cursor.x, cursor.y, newobj);
       }
