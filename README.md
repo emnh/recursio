@@ -1,10 +1,10 @@
 # recursio
 A recursive sandbox factory simulation game:
- - The map is a grid.
- - The player is a cursor in the grid, which can place objects.
+ - [DONE] The map is a grid.
+ - [DONE] The player is a cursor in the grid, which can place objects.
  - We need a feature for recursion. Say a cell contains a + and it means it has a subgrid which you can enter, modify and leave.
- - Primary feature: Conveyor belts. 4 choices for input edge, 3 outputs for output edge.
- - Each object has a number of uniform properties:
+ - [DONE] Primary feature: Conveyor belts. 4 choices for input edge, 3 outputs for output edge.
+ - [SCRATCHED] Each object has a number of uniform properties:
    - x
    - y
    - width
@@ -19,13 +19,13 @@ A recursive sandbox factory simulation game:
  - Each cell can contain a stacked number of objects. Each stack level decreases the size of the object. Maximum stack level is 8.
  - Save state to local storage to begin with. Add load/save to file functionality.
  - Map cells can contain resources. We need a mine object to mine them and output in one of 4 directions.
- - Void cell to eliminate resources.
+ - [DONE] Recycling cell to eliminate resources.
  - An essential concept is that all objects can go on conveyor belts, including conveyor belts and factories.
  - We can have self-driving objects, i.e. cars.
- - All items have integer positions in the grid at each time tick. All which happens in between is linear interpolation based on graphics frames.
+ - [DONE] All items have integer positions in the grid at each time tick. All which happens in between is linear interpolation based on graphics frames.
  - Might it be possible to let recursion cells operate at another tick frequency, in order to finish subtasks which can be required at a quicker rate above?
  - Figure out how to represent characters and numbers.
- - Robot arm is an essential device. It adds the following properties:
+ - [DONE] Robot arm is an essential device. [SCRATCHED] It adds the following properties:
    - targetx
    - targety
    - rotationx. what about integer ticks?
